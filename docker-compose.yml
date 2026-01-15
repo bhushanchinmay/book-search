@@ -11,6 +11,21 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./db/create_schema.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./db/load_data.sql:/docker-entrypoint-initdb.d/02-load.sql
+      - ./src/main/resources/books.csv:/docker-entrypoint-initdb.d/books.csv
+
+  pgadmin:
+    container_name: library-pgadmin
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
 
 volumes:
   db_data:

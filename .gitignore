@@ -1,24 +1,14 @@
 # Maven
 target/
 *.class
-*.jar
-*.war
-*.ear
 
-# IDE
+# IntelliJ IDEA
 .idea/
-.vscode/
-*.swp
-*.swo
 *.iml
 
-# OS
+# OS X
 .DS_Store
-Thumbs.db
 
-# Environment
+# Secrets and Local Config
 .env
 .env.local
-
-# Logs
-*.log
