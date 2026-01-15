@@ -8,9 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class AppTest {
 
-    /**
-     * Rigorous Test :-)
-     */
     @Test
     void testApp() {
         assertTrue(true);

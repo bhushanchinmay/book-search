@@ -11,6 +11,7 @@ echo -e "${GREEN}  Book Search Application Startup${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
+
 # Load environment variables if .env exists
 if [ -f .env ]; then
   export $(grep -v '^#' .env | xargs)
@@ -54,7 +55,7 @@ else
     echo -e "${RED}Error: Failed to start database${NC}"
     exit 1
 fi
-fi
+
 echo ""
 
 # Step 4: Import Data (if needed)

@@ -5,20 +5,20 @@
 -- Create the books table
 
 CREATE TABLE books (
-    book_id VARCHAR(255) PRIMARY KEY,
-    title VARCHAR(255),
-    rating VARCHAR(255),
+    book_id BIGINT PRIMARY KEY,
+    title TEXT,
+    rating NUMERIC(4, 2),
     description TEXT,
     language VARCHAR(255),
     isbn VARCHAR(255),
     book_format VARCHAR(255),
     edition VARCHAR(255),
-    pages VARCHAR(255),
-    publisher VARCHAR(255),
-    publish_date VARCHAR(255),
-    first_publish_date VARCHAR(255),
-    liked_percent VARCHAR(255),
-    price VARCHAR(255),
+    pages INTEGER,
+    publisher TEXT,
+    publish_date DATE,
+    first_publish_date DATE,
+    liked_percent NUMERIC(5, 2),
+    price NUMERIC(10, 2),
     search_vector tsvector
 );
 
@@ -47,7 +47,7 @@ CREATE TABLE authors (
 -- Create the books_authors table
 
 CREATE TABLE books_authors (
-    book_id VARCHAR(255) NOT NULL,
+    book_id BIGINT NOT NULL,
     author_id INTEGER NOT NULL,
     PRIMARY KEY (book_id, author_id),
     FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE,

@@ -4,24 +4,22 @@ services:
     image: postgres:17
     restart: unless-stopped
     environment:
-      POSTGRES_DB: library
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./db/create_schema.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./db/load_data.sql:/docker-entrypoint-initdb.d/02-load.sql
-      - ./src/main/resources/books.csv:/docker-entrypoint-initdb.d/books.csv
 
   pgadmin:
     container_name: library-pgadmin
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "5050:80"
     depends_on:
