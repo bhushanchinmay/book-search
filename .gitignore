@@ -12,3 +12,7 @@ target/
 # Secrets and Local Config
 .env
 .env.local
+
+# Editor directories and files
+.vscode/
+*.log
