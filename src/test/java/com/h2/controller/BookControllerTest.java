@@ -32,6 +32,16 @@ public class BookControllerTest {
     }
 
     @Test
+    void testSearchBooksDoesNotExposeSearchVector() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/books/search?searchTerm={searchTerm}",
+                String.class, "algorithms");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().contains("\"title\""));
+        assertFalse(response.getBody().contains("searchVector"));
+    }
+
+    @Test
     void testSearchBooksWithMultipleWords() {
         // Used to fail with a 500: to_tsquery rejects plain text containing spaces.
         ResponseEntity<Book[]> response = restTemplate.getForEntity("/books/search?searchTerm={searchTerm}",
