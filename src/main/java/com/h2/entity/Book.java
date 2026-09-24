@@ -3,6 +3,8 @@ package com.h2.entity;
 import java.math.BigDecimal;
 import java.sql.Date;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -34,6 +36,8 @@ public class Book {
     private BigDecimal likedPercent;
     private BigDecimal price;
 
+    // Internal full-text index data, not part of the API response.
+    @JsonIgnore
     @Column(name = "search_vector", columnDefinition = "tsvector", insertable = false, updatable = false)
     private String searchVector;
 
