@@ -14,10 +14,15 @@ import org.testcontainers.utility.MountableFile;
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
 
-    // Same image and schema script as docker-compose.yml, plus a few known books for the tests to find.
     @Bean
     @ServiceConnection
     PostgreSQLContainer<?> postgresContainer() {
+        return newPostgresContainer();
+    }
+
+    // Same image and schema script as docker-compose.yml, plus a few known books for the tests to find.
+    // Static so tests that don't start Spring (e.g. DBImporterTest) can use the same database setup.
+    static PostgreSQLContainer<?> newPostgresContainer() {
         return new PostgreSQLContainer<>(DockerImageName.parse("postgres:17"))
                 .withCopyFileToContainer(MountableFile.forHostPath("db/create_schema.sql"),
                         "/docker-entrypoint-initdb.d/01-schema.sql")
