@@ -36,7 +36,7 @@ I transitioned from a simple script-based approach to a fully **Strictly-Typed L
 - **Layered Application Design**:
     - **Controller Layer (`BookController`)**: Handles HTTP concerns and input validation.
     - **Service Layer (`BookService`)**: Encapsulates business logic, ensuring code is reusable and testable (demonstrated by `BookServiceTest`).
-    - **Repository Layer (`BookRepository`)**: Abstraction over data access. I use Spring Data JPA's `@Query` to execute native PostgreSQL full-text search syntax (`@@ to_tsquery`) while returning strongly-typed `Book` entities.
+    - **Repository Layer (`BookRepository`)**: Abstraction over data access. I use Spring Data JPA's `@Query` to execute native PostgreSQL full-text search syntax (`@@ websearch_to_tsquery`, ranked by `ts_rank`) while returning strongly-typed `Book` entities.
 
 ## How to Run
 
@@ -66,6 +66,9 @@ This script will:
 
 ## Access Points
 - **Search API**: `GET http://localhost:8080/books/search?searchTerm=algorithms`
+  - `searchTerm` accepts free text, e.g. `data structures`, `"exact phrase"` or `-excluded`.
+  - Results are ordered by relevance (title matches rank above description matches).
+  - Optional `limit` (default 20, max 100). A blank `searchTerm` or out-of-range `limit` returns `400 Bad Request`.
 - **Application Root**: http://localhost:8080
 - **PgAdmin**: http://localhost:5050 (Credentials: `admin@admin.com` / `admin123`)
 
@@ -96,7 +99,7 @@ book-search/
 
 2.  **Full-Text Search (FTS)**:
     *   **SQL Side**: Check `create_schema.sql`. Look for `tsvector` and the `GIN` index. This is the search engine magic.
-    *   **Java Side**: Open `BookRepository.java`. See the `@Query`. I use native SQL (`@@ to_tsquery`) because JPA doesn't support this specific feature out of the box.
+    *   **Java Side**: Open `BookRepository.java`. See the `@Query`. I use native SQL (`@@ websearch_to_tsquery`) because JPA doesn't support this specific feature out of the box.
 
 3.  **Batch Processing**:
     *   Open `DBImporter.java` and search for `.addBatch()`.
@@ -120,8 +123,8 @@ sequenceDiagram
     Importer->>DB: Insert Books (Batch)
     DB->>DB: Trigger: Update search_vector
     Script->>App: Start Server
-    User->>App: GET /books/search?q=java
-    App->>DB: SELECT ... @@ to_tsquery('java')
+    User->>App: GET /books/search?searchTerm=java
+    App->>DB: SELECT ... @@ websearch_to_tsquery('english', 'java') ORDER BY ts_rank
     DB-->>App: Return Results (Sorted by Rank)
     App-->>User: JSON Response
 ```
