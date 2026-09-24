@@ -139,7 +139,7 @@ sequenceDiagram
 ```
 
 ### 🛠 Useful Commands
-*   **Run Unit Tests**: `mvn test` - Runs all the tests in `src/test`. Use this before pushing code!
+*   **Run Tests**: `mvn test` - Runs all the tests in `src/test`. Use this before pushing code! Needs Docker running: [Testcontainers](https://testcontainers.com/) starts a throwaway PostgreSQL 17 with the schema and a few sample books, so you don't need to start the database or import data first.
 *   **Check Database Logs**: `docker compose logs -f db` - See what PostgreSQL is doing in real-time.
 *   **Rebuild & Clean**: `mvn clean install` - Deletes old build files and compiles everything fresh.
 
