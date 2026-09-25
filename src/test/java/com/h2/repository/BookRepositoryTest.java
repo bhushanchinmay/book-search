@@ -11,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.h2.TestcontainersConfiguration;
 import com.h2.entity.Book;
@@ -39,6 +40,19 @@ public class BookRepositoryTest {
 
     private List<Long> ids(List<Book> books) {
         return books.stream().map(Book::getBookId).toList();
+    }
+
+    @Test
+    void testSaveBookWithAssignedId() {
+        // Book IDs come from the dataset; the schema has no default for book_id, so JPA must send it.
+        Book book = new Book();
+        ReflectionTestUtils.setField(book, "bookId", -1L);
+        ReflectionTestUtils.setField(book, "title", "Zyxquux Saved Through JPA");
+
+        bookRepository.saveAndFlush(book);
+        testEntityManager.clear();
+
+        assertEquals("Zyxquux Saved Through JPA", bookRepository.findById(-1L).orElseThrow().getTitle());
     }
 
     @Test
