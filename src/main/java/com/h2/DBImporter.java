@@ -13,6 +13,9 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,8 +39,8 @@ import com.opencsv.exceptions.CsvValidationException;
  * <li><strong>Transaction Management (ACID):</strong> We purposefully disable
  * auto-commit (`conn.setAutoCommit(false)`).
  * We only `commit()` when a batch is successfully processed. If an error
- * occurs, we `rollback()`, ensuring our database
- * is never left in a half-broken state.</li>
+ * occurs, we `rollback()` the batch in progress; batches already committed
+ * stay, and re-running the import is safe thanks to `ON CONFLICT DO NOTHING`.</li>
  * <li><strong>Structured Logging (SLF4J):</strong> We avoid
  * `System.out.println`. Loggers allow us to control output verbosity
  * (INFO vs DEBUG vs ERROR) and format logs with timestamps automatically, which
@@ -163,7 +166,8 @@ public class DBImporter {
         }
     }
 
-    private static void persistData(Connection conn, List<String[]> records) throws SQLException {
+    // Package-private so tests can run it against a throwaway database.
+    static void persistData(Connection conn, List<String[]> records) throws SQLException {
         // DISABLING AUTO-COMMIT is the first step of a Transaction.
         // It tells the DB: "Don't save anything until I explicitly say commit()".
         conn.setAutoCommit(false);
@@ -192,6 +196,7 @@ public class DBImporter {
             List<String[]> dataRows = records.subList(1, records.size());
 
             int count = 0;
+            int skipped = 0;
 
             logger.info("Phase 1: Syncing Authors...");
             // We sync authors first so we have the Foreign Keys (author_id) ready for the
@@ -201,15 +206,19 @@ public class DBImporter {
             logger.info("Phase 2: Syncing Books and Relationships...");
             for (String[] record : dataRows) {
                 String bookIdStr = record[map.get("bookId")];
-                Long bookId = parseLongSafe(bookIdStr); // Parse to Long
+                Long bookId = parseLongSafe(bookIdStr);
 
-                String authorName = record[map.get("author")];
-                Integer authorId = authorCache.get(authorName);
-
-                if (authorId == null) {
-                    logger.warn("Skipping record with missing author ID for: {}", authorName);
+                // Without a valid primary key the row cannot be stored. Skip it loudly instead of
+                // defaulting to 0, which would make every bad row collide on the same ID.
+                if (bookId == null) {
+                    logger.warn("Skipping record with invalid bookId: '{}'", bookIdStr);
+                    skipped++;
                     continue;
                 }
+
+                // A missing author is not a reason to lose the book: store it without an author link.
+                String authorName = record[map.get("author")];
+                Integer authorId = authorCache.get(authorName);
 
                 // --- BATCHING ---
                 // Instead of executing the query immediately, we add it to a local buffer.
@@ -223,7 +232,7 @@ public class DBImporter {
                 bookStmt.setString(6, record[map.get("isbn")]);
                 bookStmt.setString(7, record[map.get("bookFormat")]);
                 bookStmt.setString(8, record[map.get("edition")]);
-                bookStmt.setInt(9, parseIntSafe(record[map.get("pages")]));
+                bookStmt.setObject(9, parseIntSafe(record[map.get("pages")]), Types.INTEGER);
                 bookStmt.setString(10, record[map.get("publisher")]);
                 bookStmt.setDate(11, parseDateSafe(record[map.get("publishDate")]));
                 bookStmt.setDate(12, parseDateSafe(record[map.get("firstPublishDate")]));
@@ -233,9 +242,11 @@ public class DBImporter {
                 bookStmt.addBatch(); // Add to buffer
 
                 // Relationship Data
-                bookAuthorStmt.setLong(1, bookId);
-                bookAuthorStmt.setInt(2, authorId);
-                bookAuthorStmt.addBatch(); // Add to buffer
+                if (authorId != null) {
+                    bookAuthorStmt.setLong(1, bookId);
+                    bookAuthorStmt.setInt(2, authorId);
+                    bookAuthorStmt.addBatch(); // Add to buffer
+                }
 
                 // Flush the buffer to the DB every BATCH_SIZE records.
                 if (++count % BATCH_SIZE == 0) {
@@ -250,13 +261,12 @@ public class DBImporter {
             bookStmt.executeBatch();
             bookAuthorStmt.executeBatch();
             conn.commit();
-            logger.info("Final Commit. Total records processed: {}", count);
+            logger.info("Final Commit. Total records processed: {}, skipped: {}", count, skipped);
 
         } catch (SQLException e) {
-            // ATOMICITY: Or "All or Nothing".
-            // If any error happens in the middle of a batch, we undo (rollback) everything
-            // since the last commit.
-            // This prevents "partial data" corruption.
+            // Roll back the batch in progress. Batches committed before the error stay in the
+            // database, so a failed run leaves a partial import; re-running is safe because every
+            // insert uses ON CONFLICT DO NOTHING.
             conn.rollback();
             logger.error("Transaction Rolled Back due to error", e);
             throw e;
@@ -310,47 +320,49 @@ public class DBImporter {
 
     // --- Safe Parsing Utilities ---
     // Why? Data is dirty. "N/A", "", or "null" strings will crash
-    // Double.parseDouble().
-    // We wrap parsing in try-catch to default to safety (0.0 or null).
+    // Integer.parseInt() and friends.
+    // Missing or unparseable values become null (SQL NULL), never 0: a price or page count of 0
+    // would look like real data.
 
     private static BigDecimal parseBigDecimalSafe(String val) {
         if (val == null || val.isBlank()) {
-            return BigDecimal.ZERO;
+            return null;
         }
         try {
-            return new BigDecimal(val);
+            return new BigDecimal(val.trim());
         } catch (NumberFormatException e) {
-            return BigDecimal.ZERO;
+            return null;
         }
     }
 
     private static Long parseLongSafe(String val) {
         if (val == null || val.isBlank()) {
-            return 0L;
+            return null;
         }
         try {
-            return Long.parseLong(val);
+            return Long.parseLong(val.trim());
         } catch (NumberFormatException e) {
-            return 0L;
+            return null;
         }
     }
 
-    private static int parseIntSafe(String val) {
+    private static Integer parseIntSafe(String val) {
         if (val == null || val.isBlank())
-            return 0;
+            return null;
         try {
-            return Integer.parseInt(val);
+            return Integer.parseInt(val.trim());
         } catch (NumberFormatException e) {
-            return 0;
+            return null;
         }
     }
 
+    // Strict ISO yyyy-MM-dd. Date.valueOf alone would silently roll "2021-02-30" over to March 2.
     private static Date parseDateSafe(String val) {
         if (val == null || val.isBlank())
             return null;
         try {
-            return Date.valueOf(val);
-        } catch (IllegalArgumentException e) {
+            return Date.valueOf(LocalDate.parse(val.trim()));
+        } catch (DateTimeParseException e) {
             return null;
         }
     }
