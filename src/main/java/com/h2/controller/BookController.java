@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.h2.entity.Book;
 import com.h2.service.BookService;
@@ -31,5 +32,14 @@ public class BookController {
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleInvalidInput(IllegalArgumentException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    // e.g. ?limit=abc: explain which parameter is wrong instead of echoing the Java parse error.
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        Class<?> type = e.getRequiredType();
+        String expected = (type == int.class || type == Integer.class) ? "must be a whole number" : "has an invalid value";
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                "Parameter '" + e.getName() + "' " + expected);
     }
 }

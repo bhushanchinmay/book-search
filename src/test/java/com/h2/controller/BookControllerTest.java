@@ -75,6 +75,18 @@ public class BookControllerTest {
     }
 
     @Test
+    void testSearchBooksWhenLimitIsNotANumberReturnsBadRequest() {
+        for (String limit : new String[] { "abc", "1.5", "99999999999" }) {
+            ResponseEntity<String> response = restTemplate.getForEntity(
+                    "/books/search?searchTerm={searchTerm}&limit={limit}", String.class, "algorithms", limit);
+
+            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+            assertTrue(response.getBody().contains("Parameter 'limit' must be a whole number"));
+            assertFalse(response.getBody().contains("For input string"));
+        }
+    }
+
+    @Test
     void testSearchBooksWhenLimitIsOutOfRangeReturnsBadRequest() {
         ResponseEntity<String> response = restTemplate.getForEntity(
                 "/books/search?searchTerm={searchTerm}&limit=0", String.class, "algorithms");
