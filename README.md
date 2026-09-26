@@ -78,8 +78,8 @@ Run these from the project root after creating `.env` (see [Configuration](#conf
 - **Search API**: `GET http://localhost:8080/books/search?searchTerm=algorithms`
   - `searchTerm` accepts free text, e.g. `data structures`, `"exact phrase"` or `-excluded`.
   - Results are ordered by relevance (title matches rank above description matches).
-  - Optional `limit` (default 20, max 100). A blank `searchTerm` or out-of-range `limit` returns `400 Bad Request`.
-- **Application Root**: http://localhost:8080
+  - Optional `limit` (default 20, max 100). A blank `searchTerm`, or a `limit` that is not a whole number from 1 to 100, returns `400 Bad Request`.
+- **Health Check**: http://localhost:8080/actuator/health (returns `{"status":"UP"}` when the app and database are up)
 - **PgAdmin**: http://localhost:5050 (Credentials: `admin@admin.com` / `admin123`)
 
 ## 👨‍💻 For Junior Developers: Learning Guide
